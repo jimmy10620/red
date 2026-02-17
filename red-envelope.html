@@ -102,7 +102,7 @@ function finish(){
     const amount=state.digits[0]*10000+state.digits[1]*1000+state.digits[2]*100+state.digits[3]*10+state.digits[4];
     digitsEl.style.display="none";
     resultEl.innerText=`🎉 ${amount.toLocaleString()} 元 🎉`;
-    hint.innerText="命運已定";
+    hint.innerText="";
     generateImage(amount);
     btn.innerText="重新來過";
     btn.disabled=false;
