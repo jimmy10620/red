@@ -1,0 +1,156 @@
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>自己紅包自己決定</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="紅包命運">
+
+<style>
+body{margin:0;height:100vh;background:linear-gradient(180deg,#ffecd2,#fcb69f);display:flex;flex-direction:column;justify-content:center;align-items:center;font-family:system-ui,-apple-system;text-align:center;}
+h1{margin-bottom:6px;}
+.hint{font-size:17px;opacity:.85;margin-bottom:10px;}
+.digits{font-size:38px;letter-spacing:14px;margin:18px 0;font-weight:bold;}
+input{font-size:18px;padding:10px 14px;border-radius:12px;border:none;width:70%;margin-bottom:14px;text-align:center;}
+.mode-buttons{display:flex;gap:16px;margin-bottom:16px;}
+button{font-size:20px;padding:14px 34px;border:none;border-radius:999px;background:#e63946;color:white;}
+button.secondary{background:#6c757d;}
+button:disabled{background:#aaa;}
+button:active{transform:scale(.96);}
+.result{margin-top:18px;font-size:28px;font-weight:bold;}
+.preview img{margin-top:16px;max-width:90vw;border-radius:16px;}
+#startBtn{font-size:20px;padding:12px 28px;border-radius:12px;margin-bottom:16px;background:#f77; color:white;}
+</style>
+</head>
+<body>
+
+<h1>🧧 自己紅包自己決定</h1>
+<div class="hint" id="hint">輸入名字 → 選方向</div>
+<input id="nameInput" placeholder="輸入名字（可空白）">
+
+<div class="mode-buttons" id="mode">
+  <button onclick="selectMode('high')">從萬位開始</button>
+  <button onclick="selectMode('low')" class="secondary">從個位開始</button>
+</div>
+
+<button id="startBtn" style="display:none;">開始抽紅包</button>
+<div class="digits" id="digits" style="display:none;">＿ ＿ ＿ ＿ ＿</div>
+<button id="btn" onclick="nextDigit()" style="display:none;">決定一個數</button>
+<div class="result" id="result"></div>
+<div class="preview" id="preview"></div>
+<button id="shareBtn" style="display:none;margin-top:14px;">📤 一鍵分享 LINE</button>
+
+<script>
+const posLabel=["萬位數","千位數","百位數","十位數","個位數"];
+let state={name:"",order:null,digits:[0,0,0,0,0],index:0,locked:false,finished:false,time:null,serial:null};
+let selectedMode=null;
+let imageBlob=null;
+
+const hint=document.getElementById("hint");
+const digitsEl=document.getElementById("digits");
+const resultEl=document.getElementById("result");
+const btn=document.getElementById("btn");
+const shareBtn=document.getElementById("shareBtn");
+const preview=document.getElementById("preview");
+
+function selectMode(mode){
+    selectedMode=mode;
+    document.getElementById("startBtn").style.display="inline-block";
+    hint.innerText=`方向已選：${mode==='high'?'萬位→個位':'個位→萬位'}，點開始抽紅包`;
+}
+
+document.getElementById("startBtn").onclick=()=>{
+    if(!selectedMode) return alert("請先選方向！");
+    state.name=document.getElementById("nameInput").value.trim();
+    state.time=new Date().toLocaleString();
+    state.serial=`RP-${Date.now()}-${Math.floor(1000+Math.random()*9000)}`;
+    state.index=0;
+    state.order=selectedMode==='high'? [0,1,2,3,4]: [4,3,2,1,0];
+    digitsEl.style.display="block";
+    btn.style.display="inline-block";
+    document.getElementById("nameInput").style.display="none";
+    document.getElementById("mode").style.display="none";
+    document.getElementById("startBtn").style.display="none";
+    updateDigitsDisplay();
+    hint.innerText=`按下來決定「${posLabel[state.order[state.index]]}」`;
+};
+
+function rand(){return Math.floor(Math.random()*7);}
+function updateDigitsDisplay(){digitsEl.innerText=state.digits.map(n=>n===null?"＿":n).join(" ");}
+
+function nextDigit(){
+    btn.disabled=true;
+    const pos=state.order[state.index];
+    let count=0;
+    const spin=setInterval(()=>{
+        state.digits[pos]=rand();
+        updateDigitsDisplay();
+        count++;
+        if(count>15){
+            clearInterval(spin);
+            state.index++;
+            if(state.index<5){
+                hint.innerText=`按下來決定「${posLabel[state.order[state.index]]}」`;
+                btn.disabled=false;
+            } else finish();
+        }
+    },50);
+}
+
+function finish(){
+    const amount=state.digits[0]*10000+state.digits[1]*1000+state.digits[2]*100+state.digits[3]*10+state.digits[4];
+    digitsEl.style.display="none";
+    resultEl.innerText=`🎉 ${amount.toLocaleString()} 元 🎉`;
+    hint.innerText="命運已定";
+    generateImage(amount);
+    btn.innerText="重新來過";
+    btn.disabled=false;
+    btn.onclick=reset;
+}
+
+function generateImage(amount){
+    const canvas=document.createElement("canvas");
+    canvas.width=900;canvas.height=1200;
+    const ctx=canvas.getContext("2d");
+    const grad=ctx.createLinearGradient(0,0,0,1200);
+    grad.addColorStop(0,"#ffecd2");grad.addColorStop(1,"#fcb69f");
+    ctx.fillStyle=grad;ctx.fillRect(0,0,900,1200);
+
+    ctx.fillStyle="#000";ctx.textAlign="center";
+    ctx.font="bold 52px system-ui";ctx.fillText("🧧 自己紅包自己決定",450,130);
+    if(state.name) ctx.font="36px system-ui", ctx.fillText(`對象：${state.name}`,450,190);
+    ctx.font="bold 96px system-ui";ctx.fillText(`${amount.toLocaleString()} 元`,450,540);
+    ctx.font="30px system-ui";ctx.fillText(`時間：${state.time}`,450,630);
+    ctx.fillText(`序號：${state.serial}`,450,680);
+
+    ctx.globalAlpha=0.25;ctx.font="28px system-ui";ctx.textAlign="right";
+    ctx.fillText("紅包命運系統",860,1120);ctx.fillText(state.serial,860,1160);
+    ctx.globalAlpha=1;
+
+    const img=document.createElement("img");
+    img.src=canvas.toDataURL("image/png");
+    preview.innerHTML="";preview.appendChild(img);
+
+    canvas.toBlob(blob=>{
+        imageBlob=blob;
+        shareBtn.style.display="inline-block";
+    });
+}
+
+shareBtn.onclick=async()=>{
+    if(!imageBlob) return;
+    const file=new File([imageBlob],`redpacket-${state.serial}.png`,{type:"image/png"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+        try{await navigator.share({title:"自己紅包自己決定",text:"命運已定，紅包金額如下",files:[file]});}catch(e){}
+    }else alert("此瀏覽器不支援一鍵分享，請長按圖片分享");
+}
+
+function reset(){
+    imageBlob=null;
+    state={name:"",order:null,digits:[0,0,0,0,0],index:0,locked:false,finished:false,time:null,serial:null};
+    location.reload();
+}
+</script>
+</body>
+</html>
