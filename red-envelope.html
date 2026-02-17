@@ -8,7 +8,17 @@
 <meta name="apple-mobile-web-app-title" content="紅包命運">
 
 <style>
-body{margin:0;height:100vh;background:linear-gradient(180deg,#ffecd2,#fcb69f);display:flex;flex-direction:column;justify-content:center;align-items:center;font-family:system-ui,-apple-system;text-align:center;}
+body{
+  margin:0;
+  height:100vh;
+  background:linear-gradient(180deg,#ffecd2,#fcb69f);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  font-family:system-ui,-apple-system;
+  text-align:center;
+}
 h1{margin-bottom:6px;}
 .hint{font-size:17px;opacity:.85;margin-bottom:10px;}
 .digits{font-size:38px;letter-spacing:14px;margin:18px 0;font-weight:bold;}
@@ -18,9 +28,25 @@ button{font-size:20px;padding:14px 34px;border:none;border-radius:999px;backgrou
 button.secondary{background:#6c757d;}
 button:disabled{background:#aaa;}
 button:active{transform:scale(.96);}
-.result{margin-top:18px;font-size:28px;font-weight:bold;}
+.result{margin-top:18px;font-size:28px;font-weight:bold;display:none;}
 .preview img{margin-top:16px;max-width:90vw;border-radius:16px;}
 #startBtn{font-size:20px;padding:12px 28px;border-radius:12px;margin-bottom:16px;background:#f77; color:white;}
+
+/* 上方按鈕區：抽數+重新來過 */
+#topButtonGroup{
+  display:flex;
+  gap:12px;
+  margin-top:16px;
+  justify-content:center;
+}
+/* 下方分享按鈕 */
+#bottomButtonGroup{
+  display:flex;
+  justify-content:center;
+  margin-top:24px;
+}
+#resetBtn{display:none;}
+#shareBtn{display:none;}
 </style>
 </head>
 <body>
@@ -36,10 +62,20 @@ button:active{transform:scale(.96);}
 
 <button id="startBtn" style="display:none;">開始抽紅包</button>
 <div class="digits" id="digits" style="display:none;">＿ ＿ ＿ ＿ ＿</div>
-<button id="btn" onclick="nextDigit()" style="display:none;">決定一個數</button>
+
+<!-- 上方按鈕區 -->
+<div id="topButtonGroup">
+  <button id="btn" onclick="nextDigit()" style="display:none;">決定一個數</button>
+  <button id="resetBtn" onclick="reset()">重新來過</button>
+</div>
+
 <div class="result" id="result"></div>
 <div class="preview" id="preview"></div>
-<button id="shareBtn" style="display:none;margin-top:14px;">📤 一鍵分享 LINE</button>
+
+<!-- 下方分享按鈕區 -->
+<div id="bottomButtonGroup">
+  <button id="shareBtn">📤 一鍵分享 LINE</button>
+</div>
 
 <script>
 const posLabel=["萬位數","千位數","百位數","十位數","個位數"];
@@ -52,7 +88,11 @@ const digitsEl=document.getElementById("digits");
 const resultEl=document.getElementById("result");
 const btn=document.getElementById("btn");
 const shareBtn=document.getElementById("shareBtn");
+const resetBtn=document.getElementById("resetBtn");
 const preview=document.getElementById("preview");
+
+shareBtn.style.display="none";
+resetBtn.style.display="none";
 
 function selectMode(mode){
     selectedMode=mode;
@@ -100,13 +140,20 @@ function nextDigit(){
 
 function finish(){
     const amount=state.digits[0]*10000+state.digits[1]*1000+state.digits[2]*100+state.digits[3]*10+state.digits[4];
+
+    // 隱藏五位數
     digitsEl.style.display="none";
-    resultEl.innerText=`🎉 ${amount.toLocaleString()} 元 🎉`;
+    btn.style.display="none";
+    resultEl.style.display="none";
+
     hint.innerText="";
+
     generateImage(amount);
-    btn.innerText="重新來過";
-    btn.disabled=false;
-    btn.onclick=reset;
+
+    // 上方重新來過按鈕保持原位
+    resetBtn.style.display="inline-block";
+    // 分享按鈕下方顯示
+    shareBtn.style.display="inline-block";
 }
 
 function generateImage(amount){
@@ -118,14 +165,20 @@ function generateImage(amount){
     ctx.fillStyle=grad;ctx.fillRect(0,0,900,1200);
 
     ctx.fillStyle="#000";ctx.textAlign="center";
-    ctx.font="bold 52px system-ui";ctx.fillText("🧧 自己紅包自己決定",450,130);
+    ctx.font="bold 52px system-ui";
+    ctx.fillText("🧧 自己紅包自己決定",450,130);
     if(state.name) ctx.font="36px system-ui", ctx.fillText(`對象：${state.name}`,450,190);
-    ctx.font="bold 96px system-ui";ctx.fillText(`${amount.toLocaleString()} 元`,450,540);
-    ctx.font="30px system-ui";ctx.fillText(`時間：${state.time}`,450,630);
-    ctx.fillText(`序號：${state.serial}`,450,680);
+    ctx.font="bold 140px system-ui"; // ✅ 金額字體放大
+    ctx.fillText(`🎉${amount.toLocaleString()} 元🎉`,450,540);
+    ctx.font="30px system-ui";
+    ctx.fillText(`時間：${state.time}`,450,630);
 
-    ctx.globalAlpha=0.25;ctx.font="28px system-ui";ctx.textAlign="right";
-    ctx.fillText("紅包命運系統",860,1120);ctx.fillText(state.serial,860,1160);
+    // 浮水印序號
+    ctx.globalAlpha=0.25;
+    ctx.font="28px system-ui";
+    ctx.textAlign="right";
+    ctx.fillText("紅包命運系統",860,1120);
+    ctx.fillText(state.serial,860,1160);
     ctx.globalAlpha=1;
 
     const img=document.createElement("img");
@@ -134,7 +187,6 @@ function generateImage(amount){
 
     canvas.toBlob(blob=>{
         imageBlob=blob;
-        shareBtn.style.display="inline-block";
     });
 }
 
@@ -147,8 +199,6 @@ shareBtn.onclick=async()=>{
 }
 
 function reset(){
-    imageBlob=null;
-    state={name:"",order:null,digits:[0,0,0,0,0],index:0,locked:false,finished:false,time:null,serial:null};
     location.reload();
 }
 </script>
