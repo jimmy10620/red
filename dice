@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>自己紅包自己決定</title>
+
+<style>
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  font-family:system-ui,-apple-system;
+}
+body{
+  background:linear-gradient(180deg,#ffecd2,#fcb69f);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+}
+h1{margin:8px 0;}
+.hint{opacity:.85;margin-bottom:10px;font-size:16px;}
+
+input{
+  padding:10px;
+  border-radius:12px;
+  border:none;
+  width:70%;
+  text-align:center;
+  font-size:18px;
+}
+
+.mode-buttons{display:flex;gap:12px;margin:16px 0;}
+
+button{
+  padding:14px 30px;
+  border:none;
+  border-radius:999px;
+  background:#e63946;
+  color:white;
+  font-size:18px;
+}
+button.secondary{background:#6c757d;}
+button:disabled{background:#aaa;}
+
+.digits{
+  display:none;
+  font-size:72px;
+  letter-spacing:18px;
+  font-weight:bold;
+  margin:20px 0;
+}
+
+#topButtonGroup{display:flex;gap:12px;margin-top:10px;}
+#bottomButtonGroup{margin-top:20px;}
+
+#resetBtn,#shareBtn{display:none;}
+.preview img{max-width:85vw;border-radius:16px;margin-top:16px;}
+</style>
+</head>
+
+<body>
+
+<h1>🧧 自己紅包自己決定</h1>
+<div class="hint" id="hint">輸入名字 → 選方向</div>
+
+<input id="nameInput" placeholder="輸入名字（可空白）">
+
+<div class="mode-buttons" id="mode">
+  <button onclick="selectMode('high')">從萬位開始</button>
+  <button onclick="selectMode('low')" class="secondary">從個位開始</button>
+</div>
+
+<button id="startBtn" style="display:none;">開始抽紅包</button>
+
+<div class="digits" id="digits">🎲 🎲 🎲 🎲 🎲</div>
+
+<div id="topButtonGroup">
+  <button id="rollBtn" style="display:none;">🎲 擲骰子</button>
+  <button id="resetBtn" onclick="reset()">重新來過</button>
+</div>
+
+<div class="preview" id="preview"></div>
+
+<div id="bottomButtonGroup">
+  <button id="shareBtn">📤 一鍵分享 LINE</button>
+</div>
+
+<script>
+// 🎲 骰子點數對應（1–6）
+const diceFace = ["","⚀","⚁","⚂","⚃","⚄","⚅"];
+const posLabel=["萬位","千位","百位","十位","個位"];
+
+let state={
+  digits:[null,null,null,null,null],
+  order:[],
+  index:0,
+  serial:"",
+  time:""
+};
+
+let mode=null;
+let imageBlob=null;
+
+const hint=document.getElementById("hint");
+const digitsEl=document.getElementById("digits");
+const rollBtn=document.getElementById("rollBtn");
+const resetBtn=document.getElementById("resetBtn");
+const shareBtn=document.getElementById("shareBtn");
+const preview=document.getElementById("preview");
+
+function selectMode(m){
+  mode=m;
+  document.getElementById("startBtn").style.display="inline-block";
+  hint.innerText=`方向已選：${m==='high'?'萬 → 個':'個 → 萬'}`;
+}
+
+document.getElementById("startBtn").onclick=()=>{
+  state.time=new Date().toLocaleString();
+  state.serial=`RP-${Date.now()}`;
+  state.order=mode==='high'?[0,1,2,3,4]:[4,3,2,1,0];
+
+  document.getElementById("mode").style.display="none";
+  document.getElementById("startBtn").style.display="none";
+  document.getElementById("nameInput").style.display="none";
+
+  digitsEl.style.display="block";
+  rollBtn.style.display="inline-block";
+  hint.innerText=`擲骰子決定「${posLabel[state.order[state.index]]}」`;
+  renderDigits();
+};
+
+// 🎯 只會產生 1–6
+function rand(){
+  return Math.floor(Math.random()*6) + 1;
+}
+
+function renderDigits(){
+  digitsEl.innerText = state.digits
+    .map(d => d===null ? "🎲" : diceFace[d])
+    .join(" ");
+}
+
+rollBtn.onclick=()=>rollDice();
+
+function rollDice(){
+  rollBtn.disabled=true;
+  const pos=state.order[state.index];
+  let rolls=20;
+  let delay=40;
+
+  const timer=setInterval(()=>{
+    state.digits[pos]=rand();
+    renderDigits();
+    rolls--;
+    delay+=8;
+
+    if(rolls<=0){
+      clearInterval(timer);
+      renderDigits(); // 定格成骰子點數
+      state.index++;
+      rollBtn.disabled=false;
+
+      if(state.index<5){
+        hint.innerText=`擲骰子決定「${posLabel[state.order[state.index]]}」`;
+      }else{
+        finish();
+      }
+    }
+  },delay);
+}
+
+function finish(){
+  rollBtn.style.display="none";
+  hint.innerText="";
+
+  // ⏳ 停留 5 秒在骰子畫面
+  setTimeout(()=>{
+    digitsEl.style.display="none";
+    generateImage(calcAmount());
+    resetBtn.style.display="inline-block";
+    shareBtn.style.display="inline-block";
+  },2000);
+}
+
+function calcAmount(){
+  return state.digits.reduce(
+    (sum,val,i)=>sum + val*Math.pow(10,4-i),
+    0
+  );
+}
+
+function generateImage(amount){
+  const c=document.createElement("canvas");
+  c.width=900;c.height=1200;
+  const x=c.getContext("2d");
+
+  const g=x.createLinearGradient(0,0,0,1200);
+  g.addColorStop(0,"#ffecd2");
+  g.addColorStop(1,"#fcb69f");
+  x.fillStyle=g;
+  x.fillRect(0,0,900,1200);
+
+  x.fillStyle="#000";
+  x.textAlign="center";
+  x.font="bold 52px system-ui";
+  x.fillText("🧧 自己紅包自己決定",450,140);
+
+  x.font="bold 150px system-ui";
+  x.fillText(`🎉${amount.toLocaleString()} 元🎉`,450,550);
+
+  x.font="28px system-ui";
+  x.fillText(state.time,450,650);
+
+  // 浮水印序號
+  x.globalAlpha=.25;
+  x.textAlign="right";
+  x.fillText("紅包命運系統",860,1120);
+  x.fillText(state.serial,860,1160);
+
+  const img=document.createElement("img");
+  img.src=c.toDataURL();
+  preview.innerHTML="";
+  preview.appendChild(img);
+
+  c.toBlob(b=>imageBlob=b);
+}
+
+shareBtn.onclick=async()=>{
+  if(!imageBlob) return;
+  const f=new File([imageBlob],"redpacket.png",{type:"image/png"});
+  if(navigator.canShare && navigator.canShare({files:[f]})){
+    await navigator.share({files:[f]});
+  }else{
+    alert("此瀏覽器不支援一鍵分享，請長按圖片");
+  }
+};
+
+function reset(){
+  location.reload();
+}
+</script>
+
+</body>
+</html>
