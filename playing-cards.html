@@ -220,6 +220,8 @@ function generateImage(){
   // 只顯示中央金額
   ctx.textAlign="center";
   ctx.fillStyle="#000";
+  ctx.font="bold 52px system-ui";
+  ctx.fillText("🧧 自己紅包自己決定",450,130);
   ctx.font="bold 140px system-ui";
   ctx.fillText(`🎉${amount.toLocaleString()} 元🎉`,450,600);
   // 時間（小字，金額下方）
