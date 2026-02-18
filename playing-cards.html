@@ -1,0 +1,251 @@
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>自己紅包自己決定</title>
+
+<style>
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  font-family:system-ui,-apple-system;
+}
+body{
+  background:linear-gradient(180deg,#ffecd2,#fcb69f);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+h1{margin-bottom:6px;}
+.hint{opacity:.85;margin-bottom:12px;}
+input{
+  font-size:18px;
+  padding:10px 14px;
+  border-radius:12px;
+  border:none;
+  width:70%;
+  margin-bottom:14px;
+  text-align:center;
+}
+.mode-buttons{display:flex;gap:16px;margin-bottom:16px;}
+button{
+  font-size:20px;
+  padding:14px 34px;
+  border:none;
+  border-radius:999px;
+  background:#e63946;
+  color:white;
+}
+button.secondary{background:#6c757d;}
+button:disabled{background:#aaa;}
+button:active{transform:scale(.96);}
+.cards{
+  display:none;
+  font-size:56px;
+  letter-spacing:18px;
+  margin:26px 0;
+}
+#topButtons{display:flex;gap:12px;margin-top:12px;}
+#bottomButtons{margin-top:22px;}
+#resetBtn,#shareBtn{display:none;}
+.preview img{max-width:80vw;border-radius:18px;margin-top:16px;}
+.red{color:#c1121f;}
+.black{color:#000;}
+</style>
+</head>
+
+<body>
+
+<h1>🧧 自己紅包自己決定</h1>
+<div class="hint" id="hint">輸入名字 → 選方向</div>
+
+<input id="nameInput" placeholder="輸入名字（可空白）">
+
+<div class="mode-buttons" id="mode">
+  <button onclick="selectMode('high')">從萬位開始</button>
+  <button onclick="selectMode('low')" class="secondary">從個位開始</button>
+</div>
+
+<button id="startBtn" style="display:none;">開始抽紅包</button>
+
+<div class="cards" id="cards"></div>
+
+<div id="topButtons">
+  <button id="drawBtn" onclick="drawCard()" style="display:none;">抽一張牌</button>
+  <button id="resetBtn" onclick="location.reload()">重新來過</button>
+</div>
+
+<div class="preview" id="preview"></div>
+
+<div id="bottomButtons">
+  <button id="shareBtn">📤 一鍵分享</button>
+</div>
+
+<script>
+const suits=[
+  {s:"♠",color:"black"},
+  {s:"♥",color:"red"},
+  {s:"♦",color:"red"},
+  {s:"♣",color:"black"}
+];
+
+const faces=[
+  {face:"A",value:1},
+  {face:"2",value:2},
+  {face:"3",value:3},
+  {face:"4",value:4},
+  {face:"5",value:5},
+  {face:"6",value:6},
+  {face:"7",value:7},
+  {face:"8",value:8},
+  {face:"9",value:9},
+  {face:"10",value:0},
+  {face:"J",value:0},
+  {face:"Q",value:0},
+  {face:"K",value:0}
+];
+
+let state={
+  order:[],
+  index:0,
+  cards:[null,null,null,null,null],
+  name:"",
+  serial:"",
+  time:""
+};
+
+const hint=document.getElementById("hint");
+const cardsEl=document.getElementById("cards");
+const drawBtn=document.getElementById("drawBtn");
+const resetBtn=document.getElementById("resetBtn");
+const shareBtn=document.getElementById("shareBtn");
+const preview=document.getElementById("preview");
+const startBtn=document.getElementById("startBtn");
+const nameInput=document.getElementById("nameInput");
+const mode=document.getElementById("mode");
+
+shareBtn.style.display="none";
+resetBtn.style.display="none";
+
+function selectMode(modeStr){
+  state.order=modeStr==="high"? [0,1,2,3,4]:[4,3,2,1,0];
+  startBtn.style.display="inline-block";
+  hint.innerText=`方向已選：${modeStr==="high"?"萬位 → 個位":"個位 → 萬位"}`;
+}
+
+startBtn.onclick=()=>{
+  state.name=nameInput.value.trim();
+  state.serial=`RP-${Date.now()}`;
+  state.time=new Date().toLocaleString();
+  nameInput.style.display="none";
+  mode.style.display="none";
+  startBtn.style.display="none";
+  cardsEl.style.display="block";
+  drawBtn.style.display="inline-block";
+  cardsEl.innerHTML="🂠 🂠 🂠 🂠 🂠";
+  hint.innerText="按下來抽一張牌";
+};
+
+function randomCard(){
+  const suit=suits[Math.floor(Math.random()*suits.length)];
+  const face=faces[Math.floor(Math.random()*faces.length)];
+  return {...suit,...face};
+}
+
+function drawCard(){
+  drawBtn.disabled=true;
+  const pos=state.order[state.index];
+  let count=0;
+
+  const spin=setInterval(()=>{
+    const c=randomCard();
+    state.cards[pos]=c;
+    renderCards();
+    if(++count>14){
+      clearInterval(spin);
+      state.index++;
+      drawBtn.disabled=false;
+      if(state.index>=5) finish();
+    }
+  },70);
+}
+
+function renderCards(){
+  cardsEl.innerHTML=state.cards.map(c=>{
+    if(!c) return "🂠";
+    return `<span class="${c.color}">${c.s}${c.face}</span>`;
+  }).join(" ");
+}
+
+function finish(){
+  hint.innerText="";
+  drawBtn.style.display="none";
+
+  // 停留抽牌畫面 2 秒
+  setTimeout(()=>{
+    // 隱藏抽牌區
+    cardsEl.style.display="none";
+
+    // 產生分享圖片（只保留大金額）
+    generateImage();
+
+    // 顯示按鈕
+    resetBtn.style.display="inline-block";
+    shareBtn.style.display="inline-block";
+  },2000);
+}
+
+function generateImage(){
+  const amount=
+    state.cards[0].value*10000+
+    state.cards[1].value*1000+
+    state.cards[2].value*100+
+    state.cards[3].value*10+
+    state.cards[4].value;
+
+  const canvas=document.createElement("canvas");
+  canvas.width=900;
+  canvas.height=1200;
+  const ctx=canvas.getContext("2d");
+  const g=ctx.createLinearGradient(0,0,0,1200);
+  g.addColorStop(0,"#ffecd2");
+  g.addColorStop(1,"#fcb69f");
+  ctx.fillStyle=g;
+  ctx.fillRect(0,0,900,1200);
+
+  // 只顯示中央金額
+  ctx.textAlign="center";
+  ctx.fillStyle="#000";
+  ctx.font="bold 140px system-ui";
+  ctx.fillText(`🎉${amount.toLocaleString()} 元🎉`,450,600);
+  // 時間（小字，金額下方）
+  ctx.font="36px system-ui";
+     ctx.fillText(state.time,450,680);
+  // 浮水印序號
+  ctx.globalAlpha=0.25;
+  ctx.font="28px system-ui";
+  ctx.textAlign="right";
+  ctx.fillText("紅包命運系統",860,1120);
+  ctx.fillText(state.serial,860,1160);
+  ctx.globalAlpha=1;
+
+  const img=document.createElement("img");
+  img.src=canvas.toDataURL("image/png");
+  preview.innerHTML="";
+  preview.appendChild(img);
+  canvas.toBlob(b=>{
+    shareBtn.onclick=async()=>{
+      const file=new File([b],"redpacket.png",{type:"image/png"});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({files:[file]});
+      }else alert("請長按圖片分享");
+    };
+  });
+}
+</script>
+</body>
+</html>
